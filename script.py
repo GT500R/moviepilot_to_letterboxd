@@ -1,4 +1,4 @@
-#imports
+# imports
 from os import path
 import configparser
 import requests
@@ -6,8 +6,9 @@ from bs4 import BeautifulSoup
 import csv
 
 LOGIN_URL = "https://www.moviepilot.de/login?next="
-SESSION_POST_URL="https://www.moviepilot.de/api/session"
+SESSION_POST_URL = "https://www.moviepilot.de/api/session"
 SEARCH_URI = "https://www.moviepilot.de/users/%s/rated/movies?page=%d"
+
 
 # load config
 def get_config():
@@ -20,12 +21,14 @@ def get_config():
         'userToParse': config['config']['userToParse']
     }
 
+
 # create a csv file
 def create_csv(user):
     csv_path = path.join(path.dirname(path.realpath(__file__)), str(user) + '.csv')
     with open(csv_path, 'w', encoding='UTF-8', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(('Title','Year','Rating10'))
+        writer.writerow(('Title', 'Year', 'Rating10'))
+
 
 # write to previously created csv file
 def write_to_csv(user, movie):
@@ -38,21 +41,23 @@ def write_to_csv(user, movie):
           movie['rating']
         ))
 
+
 # request movies pages for selected user as long there are movies to export
 def get_movies(request, user):
     i = 1 
    
     while request.get(SEARCH_URI % (user, i)):
-       search_document = request.get(SEARCH_URI % (user, i))
-       print("reading: "+SEARCH_URI % (user, i))
-       i += 1
-       document = BeautifulSoup(search_document._content, 'html.parser')
-       scrape_movielist_and_write_to_csv(user, document)
-       no_more_movies_to_export = False
-       if (document.find_all("td", {"class": "plain-list-movie"}) == []):
-           no_more_movies_to_export = True
-       if (no_more_movies_to_export):
-           break
+        search_document = request.get(SEARCH_URI % (user, i))
+        print("reading: "+SEARCH_URI % (user, i))
+        i += 1
+        document = BeautifulSoup(search_document._content, 'html.parser')
+        scrape_movielist_and_write_to_csv(user, document)
+        no_more_movies_to_export = False
+        if not document.find_all("td", {"class": "plain-list-movie"}):
+            no_more_movies_to_export = True
+        if no_more_movies_to_export:
+            break
+
 
 # find movie infos and write them to csv file
 def scrape_movielist_and_write_to_csv(user, document):
@@ -68,15 +73,18 @@ def scrape_movielist_and_write_to_csv(user, document):
         new_movie['rating'] = current_movie.find_next_sibling().get_text(strip=True)
         write_to_csv(user, new_movie)
 
+
 # get moviepilot login
 def get_mp_login():
     login = input("Moviepilot login: ")
     return login
 
+
 # get moviepilot password
 def get_mp_password():
     password = input("Moviepilot password: ")
     return password
+
 
 # create a moviepilot session with given credentials
 def login_to_moviepilot(u, p):
@@ -95,15 +103,18 @@ def login_to_moviepilot(u, p):
         "password": password
     }
 
-     # perform login
-    session.post(SESSION_POST_URL, data = payload)
+    # perform login
+    session.post(SESSION_POST_URL, data=payload)
     return session
+
 
 def get_user():
     user = input("Enter the moviepilot username you want to export filmratings for: ")
-    print("Search will be done on the user: " + user + ". Your csv will be saved in the current directory under the name: "+user+".csv")
+    print("Search will be done on the user: " + user +
+          ". Your csv will be saved in the current directory under the name: "+user+".csv")
     
     return user.lower().strip()
+
 
 def main():
     # get config from file
@@ -120,6 +131,7 @@ def main():
     
     # scrape search URL website and write to csv add additional amount of maxpages
     get_movies(session, user)
+
 
 if __name__ == "__main__":
     main()
