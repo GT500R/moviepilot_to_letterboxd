@@ -4,6 +4,7 @@ import configparser
 import requests
 from bs4 import BeautifulSoup
 import csv
+from datetime import datetime
 
 LOGIN_URL = "https://www.moviepilot.de/login?next="
 SESSION_POST_URL = "https://www.moviepilot.de/api/session"
@@ -117,6 +118,9 @@ def get_user():
 
 
 def main():
+    # start time measurement
+    start_time = datetime.now()
+
     # get config from file
     config = get_config()
     
@@ -131,6 +135,9 @@ def main():
     
     # scrape search URL website and write to csv add additional amount of maxpages
     get_movies(session, user)
+
+    # end and print time measurement
+    print("Time consumption: " + str(datetime.now() - start_time))
 
 
 if __name__ == "__main__":
