@@ -53,10 +53,8 @@ def get_movies(request, user):
         i += 1
         document = BeautifulSoup(search_document._content, 'html.parser')
         scrape_movielist_and_write_to_csv(user, document)
-        no_more_movies_to_export = False
-        if not document.find_all("td", {"class": "plain-list-movie"}):
-            no_more_movies_to_export = True
-        if no_more_movies_to_export:
+        if not document.find_all("td", {"class": "movie"}):
+            # no more movies to export
             break
 
 
