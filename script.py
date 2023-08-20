@@ -6,9 +6,10 @@ from bs4 import BeautifulSoup
 import csv
 from datetime import datetime
 
-LOGIN_URL = "https://www.moviepilot.de/login?next="
-SESSION_POST_URL = "https://www.moviepilot.de/api/session"
-SEARCH_URI = "https://www.moviepilot.de/users/%s/rated/movies?page=%d"
+BASE_URL = "https://www.moviepilot.de"
+LOGIN_URL = BASE_URL + "/login?next="
+SESSION_POST_URL = BASE_URL + "/api/session"
+SEARCH_URI = BASE_URL + "/users/%s/rated/movies?page=%d"
 
 
 # load config
