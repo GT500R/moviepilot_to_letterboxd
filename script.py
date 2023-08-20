@@ -52,7 +52,7 @@ def get_movies(request, user):
         search_document = request.get(SEARCH_URI % (user, i))
         print("reading: "+SEARCH_URI % (user, i))
         i += 1
-        document = BeautifulSoup(search_document._content, 'html.parser')
+        document = BeautifulSoup(search_document.content, 'html.parser')
         scrape_movielist_and_write_to_csv(user, document)
         if not document.find_all("div", {"class": "movie"}):
             # no more movies to export
