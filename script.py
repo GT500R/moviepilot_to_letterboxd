@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 from datetime import datetime
+import html
 
 BASE_URL = "https://www.moviepilot.de"
 LOGIN_URL = BASE_URL + "/login?next="
@@ -29,7 +30,7 @@ def create_csv(user):
     csv_path = path.join(path.dirname(path.realpath(__file__)), str(user) + '.csv')
     with open(csv_path, 'w', encoding='UTF-8', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(('Title', 'Year', 'Rating10'))
+        writer.writerow(('Title (German)', 'Title (original)', 'Year', 'Rating10', 'IMDb ID'))
 
 
 # write to previously created csv file
@@ -38,10 +39,45 @@ def write_to_csv(user, movie):
     with open(csv_path, 'a', encoding='UTF-8', newline='') as f:
         writer = csv.writer(f)
         writer.writerow((
-          movie['title'],
-          movie['year'],
-          movie['rating']
+            movie['title_german'],
+            movie['title_original'],
+            movie['year'],
+            movie['rating'],
+            movie['imdb_id']
         ))
+
+
+def get_title_original_imdb_id_year(movie_url):
+    full_movie_url = BASE_URL + movie_url
+    data = requests.get(full_movie_url)
+    data_string = str(data.content)
+
+    # year
+    year_attribute = '"productionYear":"'
+    year_position = data_string.find(year_attribute)
+    year_start = year_position + len(year_attribute)
+    year_end = data_string.find('"', year_start)
+    year = data_string[year_start:year_end]
+
+    # original title
+    title_orig_attribute = '"originalTitle":"'
+    title_orig_position = data_string.find(title_orig_attribute)
+    title_orig_start = title_orig_position + len(title_orig_attribute)
+    title_orig_end = data_string.find('"', title_orig_start)
+    title_orig = data_string[title_orig_start:title_orig_end]
+    # interpret escape sequences
+    title_orig = title_orig.encode().decode('unicode-escape').encode('latin1').decode('utf-8')
+    title_orig = html.unescape(title_orig)
+
+    # IMDb ID
+    imdb_id_attribute = '"imdbId":"'
+    imdb_id_position = data_string.find(imdb_id_attribute)
+    imdb_id_length = 9
+    imdb_id_start = imdb_id_position + len(imdb_id_attribute)
+    imdb_id_end = imdb_id_start + imdb_id_length
+    imdb_id = data_string[imdb_id_start:imdb_id_end]
+
+    return title_orig, imdb_id, year
 
 
 # request movies pages for selected user as long there are movies to export
@@ -61,17 +97,41 @@ def get_movies(request, user):
 
 # find movie infos and write them to csv file
 def scrape_movielist_and_write_to_csv(user, document):
-    movieslist = document.find_all("td", {"class": "plain-list-movie"})
-    for current_movie in movieslist:
-        new_movie = {'title': None, 'director': None, 'year': None, 'rating': None}
-        new_movie['title'] = current_movie.find("a").get_text(strip=True)
-        date = current_movie.find_all("span", {"class": "production_info"})
-        for d in date:
-            chunk = d.get_text()
-            date = [int(s) for s in chunk.split() if s.isdigit()]
-            new_movie['year'] = date[0]
-        new_movie['rating'] = current_movie.find_next_sibling().get_text(strip=True)
-        write_to_csv(user, new_movie)
+    user_short = user[0:7] + "..."
+    ratings = []
+
+    ratings_list = document.find_all("div", {"class": "heat_buttons rating"})
+    for current_rating in ratings_list:
+        current_rating_2 = current_rating.find("span", {"class", "very-small"})
+        if current_rating_2:
+            content = current_rating_2.contents[0].get_text()
+            if (content == user) or (content == user_short):
+                ratings.append(current_rating_2.find_next_sibling().get_text(strip=True))
+
+    movies_list = document.find_all("div", {"class": "movie"})
+
+    movies_on_this_page = 0
+    for current_movie in movies_list:
+        current_movie_2 = current_movie.find("a", {"data-item-type", True})
+        if current_movie_2:
+            new_movie = {
+                'title_german': None,
+                'title_original': None,
+                'director': None,
+                'year': None,
+                'rating': None,
+                'imdb_id': None
+            }
+            movie_url = current_movie.a["href"]
+            new_movie['title_german'] = current_movie_2.attrs['title']
+            title_original, imdb_id, year = get_title_original_imdb_id_year(movie_url)
+            new_movie['title_original'] = title_original
+            new_movie['imdb_id'] = imdb_id
+            new_movie['year'] = year
+            new_movie['rating'] = ratings[movies_on_this_page]
+            write_to_csv(user, new_movie)
+            movies_on_this_page += 1
+    print("    number of movies on this page: " + str(movies_on_this_page))
 
 
 # get moviepilot login
